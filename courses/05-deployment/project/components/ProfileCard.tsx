@@ -1,6 +1,6 @@
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 
-/** Stub — implement per challenge 01 README */
+/** Stub — implement per challenge README */
 export default function ProfileCard() {
   return <View testID="profile-card" />;
 }

@@ -1,13 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
-import expenseReducer from './expenseSlice';
-import cartReducer from './cartSlice';
-
-export const store = configureStore({
-  reducer: {
-    expenses: expenseReducer,
-    cart: cartReducer,
-  },
-});
-
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+/** Stub — Redux store for missions */
+export const store = { getState: () => ({}), dispatch: () => {}, subscribe: () => () => {} };
+export type RootState = Record<string, unknown>;
+export type AppDispatch = (action: unknown) => void;

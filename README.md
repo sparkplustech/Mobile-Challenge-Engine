@@ -38,6 +38,8 @@ npm install
 npx expo start
 ```
 
+These projects use **Expo SDK 52**. On your phone, install **Expo Go for SDK 52** (not a newer SDK) so the QR code / project matches. See [Expo Go](https://expo.dev/go) and pick the SDK 52 build if your store app is on a different version.
+
 Each course `project/README.md` lists extra packages to install (e.g. AsyncStorage, Redux, EAS CLI). Challenge READMEs such as `06-async-storage` also include install steps where needed.
 
 **Run a challenge review:**
@@ -147,9 +149,15 @@ Results are written to:
 
 
 
+
+
+
+
+
+
 ## 📈 Progress Summary
 
-**Last updated:** 5/22/2026, 5:57:09 PM
+**Last updated:** 8/7/2026, 2:56:16 PM
 
 ### Pathway
 

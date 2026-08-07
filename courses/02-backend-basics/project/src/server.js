@@ -1,42 +1,13 @@
-import http from 'http';
-import { add } from './math.js';
-import { readNotesFile } from './fs-utils.js';
+import express from 'express';
 
-const server = http.createServer(async (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
+const app = express();
+app.use(express.json());
 
-  if (req.url === '/health' && req.method === 'GET') {
-    res.writeHead(200);
-    res.end(JSON.stringify({ ok: true }));
-    return;
-  }
-
-  if (req.url === '/add' && req.method === 'GET') {
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const a = Number(url.searchParams.get('a') ?? 0);
-    const b = Number(url.searchParams.get('b') ?? 0);
-    res.writeHead(200);
-    res.end(JSON.stringify({ result: add(a, b) }));
-    return;
-  }
-
-  if (req.url === '/notes-file' && req.method === 'GET') {
-    const notes = await readNotesFile();
-    res.writeHead(200);
-    res.end(JSON.stringify(notes));
-    return;
-  }
-
-  res.writeHead(404);
-  res.end(JSON.stringify({ error: 'Not found' }));
-});
+app.get('/health', (_req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 4000;
 if (process.env.NODE_ENV !== 'test') {
-  server.listen(PORT, () => {
-    // eslint-disable-next-line no-console
-    console.log(`HTTP server on ${PORT}`);
-  });
+  app.listen(PORT, () => console.log(`Server on ${PORT}`));
 }
 
-export default server;
+export default app;

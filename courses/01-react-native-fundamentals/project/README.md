@@ -2,7 +2,7 @@
 
 ## 📊 Progress Evidence
 
-*Auto-updated when you run review. Last run: 5/22/2026, 5:56:54 PM*
+*Auto-updated when you run review. Last run: 8/7/2026, 2:56:15 PM*
 
 | Metric | Value |
 |--------|-------|
@@ -20,6 +20,8 @@
 | Mini Social Feed (Capstone) | Auth UI, Navigation, API posts, AsyncStorage, FlatList, Profile | — |
 
 ## Getting started
+
+This project targets **Expo SDK 52**. Use **Expo Go (SDK 52)** on your device — a newer Expo Go / SDK will not match this project.
 
 ```bash
 npm install
