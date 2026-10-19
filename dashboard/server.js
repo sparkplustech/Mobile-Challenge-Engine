@@ -207,6 +207,14 @@ app.post('/api/review', (req, res) => {
   if (!courseId || !challengeId) {
     return res.status(400).json({ error: 'courseId and challengeId required' });
   }
+  const courseDir = join(ROOT, 'courses', courseId);
+  if (!existsSync(courseDir)) {
+    return res.status(404).json({ error: `Course not found: ${courseId}` });
+  }
+  const config = getCourseConfig(courseId);
+  if (config && config.challenges && !config.challenges.some(c => c.id === challengeId)) {
+    return res.status(404).json({ error: `Challenge not found: ${challengeId}` });
+  }
   const script = join(ROOT, 'scripts', 'run-review-challenge.js');
   if (!existsSync(script)) {
     return res.status(500).json({ error: 'Review script not found' });
@@ -214,9 +222,12 @@ app.post('/api/review', (req, res) => {
   loadEnvFromRoot();
   const child = spawn('node', [script, `--course=${courseId}`, `--challenge=${challengeId}`], {
     cwd: ROOT,
-    stdio: 'ignore',
+    stdio: 'inherit',
     env: { ...process.env },
     detached: true,
+  });
+  child.on('error', (err) => {
+    console.error(`[review error] Failed to run review for ${courseId}/${challengeId}:`, err);
   });
   child.unref(); // allow server to keep running without waiting for child
   // Respond immediately so other requests (e.g. back to challenges) are not blocked

@@ -2,10 +2,10 @@
 /**
  * End-to-end test: dashboard API, progress, and review trigger.
  * Run from repo root: node scripts/e2e-test.js
- * Prerequisites: dashboard built (npm run dashboard:build), dashboard not running (or we start it).
+ * Automatically starts the dashboard server if it's not already running.
  */
 
-import { execSync } from 'child_process';
+import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -19,9 +19,60 @@ async function fetch(url, opts = {}) {
   return { ok: res.ok, status: res.status, json: () => res.json(), text: () => res.text() };
 }
 
+let serverProcess = null;
+
+function cleanupServer() {
+  if (serverProcess) {
+    try {
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/pid', String(serverProcess.pid), '/f', '/t'], { stdio: 'ignore' });
+      } else {
+        serverProcess.kill('SIGTERM');
+      }
+    } catch (_) {}
+    serverProcess = null;
+  }
+}
+
+process.on('exit', cleanupServer);
+process.on('SIGINT', () => { cleanupServer(); process.exit(1); });
+process.on('SIGTERM', () => { cleanupServer(); process.exit(1); });
+
+async function ensureDashboardRunning() {
+  try {
+    const res = await fetch(`${BASE}/api/progress`);
+    if (res.ok) {
+      return; // Already running
+    }
+  } catch (_) {}
+
+  console.log('Dashboard not running. Starting dashboard server...');
+  serverProcess = spawn('node', ['server.js'], {
+    cwd: join(ROOT, 'dashboard'),
+    stdio: 'ignore',
+    env: { ...process.env, DASHBOARD_PORT: '7700' }
+  });
+
+  const maxWait = 10000;
+  const start = Date.now();
+  while (Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, 400));
+    try {
+      const res = await fetch(`${BASE}/api/progress`);
+      if (res.ok) {
+        console.log('Dashboard server started on port 7700.\n');
+        return;
+      }
+    } catch (_) {}
+  }
+  throw new Error('Timed out waiting for dashboard server to start on port 7700.');
+}
+
 async function main() {
   console.log('E2E Test: Dashboard + Review pipeline\n');
   console.log('='.repeat(50));
+
+  await ensureDashboardRunning();
 
   // 1. Progress API
   console.log('\n1. GET /api/progress');
@@ -29,10 +80,9 @@ async function main() {
     const r = await fetch(`${BASE}/api/progress`);
     if (!r.ok) throw new Error(`Status ${r.status}`);
     const data = await r.json();
-    console.log('   OK – pathway:', data.pathway?.name, '| courses:', Object.keys(data.courses || {}).length);
+    console.log('   OK – pathway:', data.pathway?.name || 'Mobile & Full-Stack', '| courses:', Object.keys(data.courses || {}).length);
   } catch (e) {
     console.log('   FAIL –', e.message);
-    console.log('   Is the dashboard running? Start: npm run dashboard');
     process.exit(1);
   }
 
@@ -49,9 +99,11 @@ async function main() {
   }
 
   // 3. Challenge detail (instructions)
-  console.log('\n3. GET /api/courses/01-react-fundamentals/challenges/01-static-task-display');
+  const courseId = '01-react-native-fundamentals';
+  const challengeId = '01-expo-setup-basics';
+  console.log(`\n3. GET /api/courses/${courseId}/challenges/${challengeId}`);
   try {
-    const r = await fetch(`${BASE}/api/courses/01-react-fundamentals/challenges/01-static-task-display`);
+    const r = await fetch(`${BASE}/api/courses/${courseId}/challenges/${challengeId}`);
     if (!r.ok) throw new Error(`Status ${r.status}`);
     const data = await r.json();
     const hasInstructions = (data.instructions || '').length > 0;
@@ -62,16 +114,16 @@ async function main() {
   }
 
   // 4. POST /api/review (run review for one challenge)
-  console.log('\n4. POST /api/review (01-react-fundamentals / 01-static-task-display)');
+  console.log(`\n4. POST /api/review (${courseId} / ${challengeId})`);
   try {
     const r = await fetch(`${BASE}/api/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ courseId: '01-react-fundamentals', challengeId: '01-static-task-display' })
+      body: JSON.stringify({ courseId, challengeId })
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Review failed');
-    console.log('   OK – progress updated, lastRun:', data.progress?.courses?.['01-react-fundamentals']?.challenges?.['01-static-task-display']?.lastRun ? 'yes' : '—');
+    console.log('   OK – review triggered, started:', data.started ? 'yes' : 'no');
   } catch (e) {
     console.log('   FAIL –', e.message);
     process.exit(1);
@@ -80,9 +132,12 @@ async function main() {
   console.log('\n' + '='.repeat(50));
   console.log('E2E tests passed. Dashboard and review pipeline are working.');
   console.log('\nTo enable AI review: set GROQ_API_KEY, then run: npm run test:ai-review');
+
+  cleanupServer();
 }
 
 main().catch(e => {
+  cleanupServer();
   console.error(e);
   process.exit(1);
 });

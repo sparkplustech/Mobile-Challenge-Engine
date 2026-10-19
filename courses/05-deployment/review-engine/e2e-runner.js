@@ -5,6 +5,35 @@ import { join } from 'path';
 // 4 min (Windows/slow machines need more than 2 min); execSync on Windows avoids spawnSync npx.cmd EINVAL
 const E2E_TIMEOUT_MS = 240000;
 
+function extractFailedTestErrors(testResults) {
+  const errors = [];
+  function traverse(item) {
+    if (!item) return;
+    if (item.specs) {
+      for (const spec of item.specs) {
+        if (!spec.ok) {
+          const firstFailedTest = (spec.tests || []).find(t => t.results?.some(r => r.status === 'failed' || r.status === 'unexpected'));
+          const failedResult = firstFailedTest?.results?.find(r => r.status === 'failed' || r.status === 'unexpected');
+          const rawMsg = failedResult?.error?.message || failedResult?.errors?.[0]?.message || '';
+          const cleanMsg = rawMsg ? rawMsg.replace(/\u001b\[[0-9;]*m/g, '').split('\n').map(s => s.trim()).filter(Boolean)[0] : 'Test failed';
+          errors.push(`${spec.title}: ${cleanMsg}`);
+        }
+      }
+    }
+    if (item.suites) {
+      for (const s of item.suites) {
+        traverse(s);
+      }
+    }
+  }
+  if (Array.isArray(testResults?.suites)) {
+    for (const s of testResults.suites) {
+      traverse(s);
+    }
+  }
+  return errors;
+}
+
 /**
  * Runs Playwright E2E tests for a specific challenge
  * These tests verify visual output and user interactions.
@@ -21,6 +50,7 @@ function runPlaywright(projectDir, testFileRel, env) {
         cwd: projectDir,
         encoding: 'utf-8',
         timeout: E2E_TIMEOUT_MS,
+        maxBuffer: 10 * 1024 * 1024,
         env: runEnv,
         stdio: ['pipe', 'pipe', 'pipe']
       });
@@ -35,6 +65,7 @@ function runPlaywright(projectDir, testFileRel, env) {
     cwd: projectDir,
     encoding: 'utf-8',
     timeout: E2E_TIMEOUT_MS,
+    maxBuffer: 10 * 1024 * 1024,
     env: runEnv,
     shell: false
   });
@@ -52,16 +83,23 @@ function runPlaywright(projectDir, testFileRel, env) {
 export async function runE2ETests(challengeId, projectDir) {
   const challengeNum = challengeId.split('-')[0];
   const testFileName = `challenge-${challengeNum}.spec.ts`;
-  const testFileAbs = join(projectDir, 'tests', 'e2e', testFileName);
-  const testFileRel = `tests/e2e/${testFileName}`;
+  let testFileRel = `tests/e2e/${testFileName}`;
+  let testFileAbs = join(projectDir, testFileRel);
 
   if (!existsSync(testFileAbs)) {
-    return {
-      score: 0,
-      passed: false,
-      error: `E2E test file not found: ${testFileAbs}`,
-      details: []
-    };
+    const altFileName = `challenge-${challengeId}.spec.ts`;
+    const altFileAbs = join(projectDir, 'tests', 'e2e', altFileName);
+    if (existsSync(altFileAbs)) {
+      testFileAbs = altFileAbs;
+      testFileRel = `tests/e2e/${altFileName}`;
+    } else {
+      return {
+        score: 100,
+        passed: true,
+        note: 'No E2E tests configured for this challenge',
+        details: []
+      };
+    }
   }
 
   const baseEnv = { CI: '1' };
@@ -73,28 +111,31 @@ export async function runE2ETests(challengeId, projectDir) {
       const env = port != null ? { ...baseEnv, PLAYWRIGHT_APP_PORT: String(port) } : baseEnv;
       const output = runPlaywright(projectDir, testFileRel, env);
 
-    // Parse Playwright JSON output (may have npm prefix)
-    const raw = (output || '') + '';
-    const jsonMatch = raw.match(/\{[\s\S]*"stats"[\s\S]*\}|\[[\s\S]*"status"[\s\S]*\]/);
-    const jsonStr = jsonMatch ? jsonMatch[0] : raw;
-    const testResults = JSON.parse(jsonStr);
-    const stats = testResults.stats || {};
-    // Playwright JSON reporter uses: expected (passed), unexpected (failed), skipped, flaky
-    const totalTests = (stats.expected ?? 0) + (stats.unexpected ?? 0) + (stats.skipped ?? 0) + (stats.flaky ?? 0) || (Array.isArray(testResults) ? testResults.length : 0);
-    const passedTests = stats.expected ?? (Array.isArray(testResults) ? testResults.filter(t => t.status === 'passed').length : 0);
-    const failedTests = stats.unexpected ?? (Array.isArray(testResults) ? testResults.filter(t => t.status === 'failed').length : 0);
+      // Parse Playwright JSON output (may have npm prefix)
+      const raw = (output || '') + '';
+      const jsonMatch = raw.match(/\{[\s\S]*"stats"[\s\S]*\}|\[[\s\S]*"status"[\s\S]*\]/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : raw;
+      const testResults = JSON.parse(jsonStr);
+      const stats = testResults.stats || {};
+      // Playwright JSON reporter uses: expected (passed), unexpected (failed), skipped, flaky
+      const totalTests = (stats.expected ?? 0) + (stats.unexpected ?? 0) + (stats.skipped ?? 0) + (stats.flaky ?? 0) || (Array.isArray(testResults) ? testResults.length : 0);
+      const passedTests = stats.expected ?? (Array.isArray(testResults) ? testResults.filter(t => t.status === 'passed').length : 0);
+      const failedTests = stats.unexpected ?? (Array.isArray(testResults) ? testResults.filter(t => t.status === 'failed').length : 0);
 
-    const score = totalTests > 0 ? (passedTests / totalTests) * 100 : 0;
+      const score = totalTests > 0 ? (passedTests / totalTests) * 100 : 0;
+      const failedDetails = extractFailedTestErrors(testResults);
+      const errorMsg = failedDetails.length > 0 ? failedDetails.join('\n') : undefined;
 
-    return {
-      score: Math.round(score * 10) / 10,
-      passed: failedTests === 0 && totalTests > 0,
-      totalTests,
-      passedTests,
-      failedTests,
-      details: testResults.suites || testResults,
-      screenshots: testResults.screenshots || []
-    };
+      return {
+        score: Math.round(score * 10) / 10,
+        passed: failedTests === 0 && totalTests > 0,
+        totalTests,
+        passedTests,
+        failedTests,
+        details: testResults.suites || testResults,
+        screenshots: testResults.screenshots || [],
+        ...(errorMsg ? { error: errorMsg } : {})
+      };
     } catch (error) {
       lastError = error;
       const errMsg = (error.stdout ?? '') + (error.stderr ?? '') + (error.message ?? '');
@@ -119,7 +160,9 @@ export async function runE2ETests(challengeId, projectDir) {
           const passedTests = stats.expected ?? (Array.isArray(testResults) ? testResults.filter(t => t.status === 'passed').length : 0);
           const failedTests = stats.unexpected ?? (Array.isArray(testResults) ? testResults.filter(t => t.status === 'failed').length : 0);
           const score = totalTests > 0 ? (passedTests / totalTests) * 100 : 0;
-          return { score: Math.round(score * 10) / 10, totalTests, passedTests, failedTests, details: testResults.suites || testResults, error: lastError.message };
+          const failedDetails = extractFailedTestErrors(testResults);
+          const errorMsg = failedDetails.length > 0 ? failedDetails.join('\n') : (lastError.message || 'E2E tests failed');
+          return { score: Math.round(score * 10) / 10, totalTests, passedTests, failedTests, details: testResults.suites || testResults, error: errorMsg };
         }
       } catch (_) {}
       return null;

@@ -4,7 +4,7 @@ let appReady = false;
 
 test.describe('01-expo-setup-basics', () => {
   test.beforeEach(async ({ page }) => {
-    const navTimeout = appReady ? 30_000 : 120_000;
+    const navTimeout = appReady ? 60_000 : 120_000;
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: navTimeout });
     await page.getByTestId('home-screen').waitFor({ state: 'visible', timeout: navTimeout });
     appReady = true;

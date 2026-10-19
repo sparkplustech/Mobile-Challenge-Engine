@@ -274,7 +274,14 @@ async function reviewChallenge(challenge, config) {
         console.log(`   Passed: ${e2eResults.passedTests}/${e2eResults.totalTests} tests`);
       }
       if (e2eResults.error) {
-        console.log(`   ⚠️  Error: ${e2eResults.error.split('\n')[0]}`);
+        const lines = e2eResults.error.split('\n');
+        console.log(`   ⚠️  Error: ${lines[0]}`);
+        if (lines.length > 1) {
+          lines.slice(1, 4).forEach(l => console.log(`      - ${l}`));
+          if (lines.length > 4) {
+            console.log(`      ... and ${lines.length - 4} more error(s)`);
+          }
+        }
       } else if (e2eResults.note) {
         console.log(`   ℹ️  ${e2eResults.note}`);
       } else if (e2eResults.score === 100) {
