@@ -6,7 +6,7 @@
 
 import express from 'express';
 import cors from 'cors';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
@@ -148,7 +148,7 @@ app.get('/api/courses/:courseId', (req, res) => {
   res.json({ ...config, ...courseProgress });
 });
 
-// GET /api/courses/:courseId/challenges - paginated
+// GET /api/courses/:courseId/challenges - paginated, with difficulty from metadata
 app.get('/api/courses/:courseId/challenges', (req, res) => {
   const config = getCourseConfig(req.params.courseId);
   if (!config) return res.status(404).json({ error: 'Course not found' });
@@ -160,19 +160,65 @@ app.get('/api/courses/:courseId/challenges', (req, res) => {
   const progress = getProgress();
   const courseChallenges = progress?.courses?.[req.params.courseId]?.challenges || {};
   const courseId = req.params.courseId;
-  const withProgress = slice.map(c => ({
-    ...c,
-    passed: courseChallenges[c.id]?.passed,
-    score: courseChallenges[c.id]?.score,
-    lastRun: courseChallenges[c.id]?.lastRun,
-  }));
+  const withProgress = slice.map(c => {
+    const meta = getChallengeMetadata(courseId, c.id);
+    return {
+      ...c,
+      difficulty: meta?.difficulty ?? meta?.tier ?? null,
+      estimatedTime: meta?.estimatedTime ?? null,
+      passed: courseChallenges[c.id]?.passed,
+      score: courseChallenges[c.id]?.score,
+      lastRun: courseChallenges[c.id]?.lastRun,
+    };
+  });
   res.json({
     challenges: withProgress,
     total: challenges.length,
+    selectionRules: config.selectionRules ?? null,
     page,
     limit,
     totalPages: Math.ceil(challenges.length / limit),
   });
+});
+
+// GET /api/courses/:courseId/selection-rules
+app.get('/api/courses/:courseId/selection-rules', (req, res) => {
+  const config = getCourseConfig(req.params.courseId);
+  if (!config) return res.status(404).json({ error: 'Course not found' });
+  res.json(config.selectionRules ?? null);
+});
+
+// Learner selection storage helpers
+function getLearnerSelectionPath(courseId) {
+  return join(ROOT, 'learner-results', `${courseId}-selection.json`);
+}
+function getLearnerSelection(courseId) {
+  const p = getLearnerSelectionPath(courseId);
+  if (!existsSync(p)) return null;
+  try { return JSON.parse(readFileSync(p, 'utf-8')); } catch (_) { return null; }
+}
+
+// GET /api/learner-selection/:courseId
+app.get('/api/learner-selection/:courseId', (req, res) => {
+  res.json(getLearnerSelection(req.params.courseId) || { courseId: req.params.courseId, selectedChallenges: [] });
+});
+
+// POST /api/learner-selection/:courseId  body: { selectedChallenges: string[] }
+app.post('/api/learner-selection/:courseId', (req, res) => {
+  const { courseId } = req.params;
+  const { selectedChallenges } = req.body || {};
+  if (!Array.isArray(selectedChallenges)) {
+    return res.status(400).json({ error: 'selectedChallenges must be an array of challenge IDs' });
+  }
+  const data = { courseId, selectedChallenges, updatedAt: new Date().toISOString() };
+  try {
+    const dir = join(ROOT, 'learner-results');
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(getLearnerSelectionPath(courseId), JSON.stringify(data, null, 2));
+    res.json({ ok: true, ...data });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
 });
 
 // GET /api/courses/:courseId/challenges/:challengeId - detail, instructions, results

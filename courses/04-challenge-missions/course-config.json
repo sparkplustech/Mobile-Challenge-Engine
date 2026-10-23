@@ -3,6 +3,16 @@
   "courseName": "Challenge Missions",
   "description": "Beginner, intermediate, and advanced mission projects",
   "version": "1.0.0",
+  "selectionRules": {
+    "enabled": true,
+    "description": "Learner must complete at least 2 projects from each difficulty tier. The rest are optional bonus projects.",
+    "tiers": {
+      "beginner":     { "label": "Beginner",     "required": 2 },
+      "intermediate": { "label": "Intermediate",  "required": 2 },
+      "advanced":     { "label": "Advanced",      "required": 2 }
+    },
+    "totalRequired": 6
+  },
   "challenges": [
     {
       "id": "01-habit-tracker",

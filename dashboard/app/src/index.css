@@ -822,3 +822,280 @@ body { margin: 0; background: #fff; }
 .score-progress-bar.score-pending .score-progress-fill {
   background: #9ca3af;
 }
+
+/* ── Selection Requirements Banner ── */
+.selection-banner {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #ea580c;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  transition: all 0.3s ease;
+}
+.selection-banner-complete {
+  background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+  border-color: #22c55e;
+  border-left-color: #16a34a;
+}
+.selection-banner-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 1rem;
+  color: #9a3412;
+}
+.selection-banner-complete .selection-banner-header {
+  color: #166534;
+}
+.selection-banner-header .fa-circle-check { color: #16a34a; }
+.selection-banner-header .fa-circle-info  { color: #ea580c; }
+.selection-banner-desc {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: #78716c;
+  line-height: 1.5;
+}
+.selection-saving {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: #9a3412;
+  font-weight: 400;
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.tier-requirement-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.tier-req-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: #fff;
+  border: 1px solid #fed7aa;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  color: #44403c;
+  transition: all 0.2s ease;
+}
+.tier-req-chip-selected {
+  background: #fff7ed;
+  border-color: #ea580c;
+}
+.tier-req-chip-met {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #166534;
+}
+.tier-req-icon { font-size: 0.9em; }
+
+/* ── Tier Groups ── */
+.tier-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.tier-group {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #ffedd5;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+.tier-group:hover {
+  box-shadow: var(--shadow-md);
+}
+.tier-group-complete {
+  border-color: #bbf7d0;
+}
+.tier-group-bonus {
+  border-style: dashed;
+  border-color: #d6d3d1;
+  opacity: 0.85;
+}
+.tier-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 1.25rem;
+  background: #fff7ed;
+  flex-wrap: wrap;
+}
+.tier-group-complete .tier-group-header {
+  background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+}
+.tier-group-bonus .tier-group-header {
+  background: #f9fafb;
+}
+.tier-group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tier-emoji { font-size: 1.1em; line-height: 1; }
+.tier-group-title h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #1c1917;
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.2rem 0.6rem;
+  background: #ffedd5;
+  color: #9a3412;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid #fed7aa;
+}
+.tier-badge-met {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+.tier-badge-met .fa-check { margin-right: 0.2em; }
+.tier-group-header .tier-badge { white-space: nowrap; }
+
+.tier-progress-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 140px;
+}
+.tier-progress-track {
+  flex: 1;
+  height: 6px;
+  background: var(--track-bg);
+  border-radius: 6px;
+  overflow: hidden;
+  min-width: 60px;
+}
+.tier-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ea580c 0%, #f97316 100%);
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+.tier-group-complete .tier-progress-fill {
+  background: linear-gradient(90deg, #16a34a 0%, #22c55e 100%);
+}
+.tier-progress-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.tier-group .card-list {
+  padding: 0.875rem 1rem;
+  gap: 0.6rem;
+}
+.tier-empty {
+  margin: 0.5rem 1rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Challenge Card — selection state ── */
+.challenge-card {
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-selected {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.12), var(--shadow-sm);
+}
+.card-passed.card-selected {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15), var(--shadow-sm);
+}
+
+.card-selection-indicator {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0.1rem;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+.selection-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #d6d3d1;
+  font-size: 1.1rem;
+  padding: 0.2rem;
+  border-radius: 4px;
+  transition: color 0.2s ease, transform 0.15s ease;
+  line-height: 1;
+}
+.selection-toggle:hover {
+  color: #ea580c;
+  transform: scale(1.15);
+}
+.selection-toggle-active {
+  color: #ea580c;
+}
+.selection-toggle-active:hover {
+  color: #c2410c;
+}
+.selection-toggle:focus-visible {
+  outline: 2px solid var(--orange-600);
+  outline-offset: 2px;
+}
+
+.challenge-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+.challenge-card-title h3 {
+  margin: 0;
+}
+
+.my-pick-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  color: #fff;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.failed-tests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.time-chip {
+  display: inline-block;
+  margin-left: 0.4em;
+  padding: 0.1rem 0.45rem;
+  background: #f3f4f6;
+  color: var(--text-muted);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}

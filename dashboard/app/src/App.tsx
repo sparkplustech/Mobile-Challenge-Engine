@@ -75,6 +75,23 @@ type Challenge = {
   score?: number;
   lastRun?: string | null;
   skills?: string[];
+  difficulty?: string | null;
+  estimatedTime?: string | null;
+};
+
+type TierRule = { label: string; required: number };
+
+type SelectionRules = {
+  enabled: boolean;
+  description: string;
+  tiers: Record<string, TierRule>;
+  totalRequired: number;
+};
+
+type LearnerSelection = {
+  courseId: string;
+  selectedChallenges: string[];
+  updatedAt?: string;
 };
 
 /** Review result from challenge-results.json – full per-layer data */
@@ -160,6 +177,9 @@ export default function App() {
   const [courseSearch, setCourseSearch] = useState('');
   const [challengeSearch, setChallengeSearch] = useState('');
   const [challengeFilter, setChallengeFilter] = useState<ChallengeFilter>('all');
+  const [selectionRules, setSelectionRules] = useState<SelectionRules | null>(null);
+  const [learnerSelection, setLearnerSelection] = useState<LearnerSelection | null>(null);
+  const [savingSelection, setSavingSelection] = useState(false);
 
   const fetchProgress = useCallback(async () => {
     try {
@@ -209,16 +229,24 @@ export default function App() {
   const fetchChallenges = useCallback(async (courseId: string, page: number, signal?: AbortSignal) => {
     setLoadingChallenges(true);
     try {
-      const r = await fetchWithTimeout(`${API}/courses/${courseId}/challenges?page=${page}&limit=50`, { signal, timeoutMs: FETCH_TIMEOUT_MS });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setError(data.error || `Request failed (${r.status})`);
+      const [challengesRes, selectionRes] = await Promise.all([
+        fetchWithTimeout(`${API}/courses/${courseId}/challenges?page=${page}&limit=50`, { signal, timeoutMs: FETCH_TIMEOUT_MS }),
+        fetchWithTimeout(`${API}/learner-selection/${courseId}`, { signal, timeoutMs: FETCH_TIMEOUT_MS }),
+      ]);
+      const data = await challengesRes.json().catch(() => ({}));
+      if (!challengesRes.ok) {
+        setError(data.error || `Request failed (${challengesRes.status})`);
         setChallenges([]);
         return;
       }
       setChallenges(data.challenges || []);
       setChallengesTotalPages(data.totalPages || 1);
       setChallengesPage(page);
+      setSelectionRules(data.selectionRules ?? null);
+      if (selectionRes.ok) {
+        const selData = await selectionRes.json().catch(() => null);
+        setLearnerSelection(selData);
+      }
       setError(null);
     } catch (e) {
       if ((e as { name?: string })?.name === 'AbortError') return;
@@ -227,6 +255,28 @@ export default function App() {
       setLoadingChallenges(false);
     }
   }, []);
+
+  const saveSelection = useCallback(async (courseId: string, selectedChallenges: string[]) => {
+    setSavingSelection(true);
+    try {
+      const r = await fetch(`${API}/learner-selection/${courseId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedChallenges }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok) setLearnerSelection(data);
+    } catch (_) {}
+    finally { setSavingSelection(false); }
+  }, []);
+
+  const toggleSelection = useCallback((courseId: string, challengeId: string, currentSelected: string[]) => {
+    const next = currentSelected.includes(challengeId)
+      ? currentSelected.filter(id => id !== challengeId)
+      : [...currentSelected, challengeId];
+    setLearnerSelection(prev => prev ? { ...prev, selectedChallenges: next } : { courseId, selectedChallenges: next });
+    saveSelection(courseId, next);
+  }, [saveSelection]);
 
   const fetchDetail = useCallback(async (courseId: string, challengeId: string, signal?: AbortSignal) => {
     setLoadingDetail(true);
@@ -589,12 +639,21 @@ export default function App() {
             const cp = progress.courses[selectedCourse.id];
             const total = cp.totalChallenges ?? 0;
             const completed = cp.completedChallenges ?? 0;
-            return total > 0 && completed === total ? (
+            // For courses with selectionRules: complete when all tier requirements are met
+            const tiersDone = selectionRules?.enabled
+              ? Object.entries(selectionRules.tiers).every(([tier, rule]) => {
+                  const sel = learnerSelection?.selectedChallenges ?? [];
+                  const passedInTier = challenges.filter(ch => ch.difficulty === tier && ch.passed && sel.includes(ch.id)).length;
+                  return passedInTier >= rule.required;
+                })
+              : false;
+            const isCourseComplete = selectionRules?.enabled ? tiersDone : (total > 0 && completed === total);
+            return isCourseComplete ? (
               <div className="celebration celebration-course" role="status" aria-live="polite">
                 <i className="fa-solid fa-star celebration-icon" aria-hidden />
                 <div>
                   <strong>Course complete!</strong>
-                  <p>All challenges in {selectedCourse.name} passed. Ready for the next course?</p>
+                  <p>{selectionRules?.enabled ? `All required missions in ${selectedCourse.name} passed. Ready for the next course?` : `All challenges in ${selectedCourse.name} passed. Ready for the next course?`}</p>
                 </div>
               </div>
             ) : null;
@@ -619,32 +678,190 @@ export default function App() {
               onChange={(e) => setChallengeSearch(e.target.value)}
             />
           </div>
-          <div className="challenge-tabs">
-            <button
-              type="button"
-              className={`tab ${challengeFilter === 'all' ? 'tab-active' : ''}`}
-              onClick={() => setChallengeFilter('all')}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              className={`tab ${challengeFilter === 'passed' ? 'tab-active' : ''}`}
-              onClick={() => setChallengeFilter('passed')}
-            >
-              Passed
-            </button>
-            <button
-              type="button"
-              className={`tab ${challengeFilter === 'not-passed' ? 'tab-active' : ''}`}
-              onClick={() => setChallengeFilter('not-passed')}
-            >
-              Not passed
-            </button>
-          </div>
+
+          {/* ── Tier-Selection Requirements Banner ── */}
+          {selectionRules?.enabled && (() => {
+            const selected = learnerSelection?.selectedChallenges ?? [];
+            const tierKeys = Object.keys(selectionRules.tiers);
+            const metReqs = tierKeys.filter(tier => {
+              const tierChallenges = challenges.filter(ch => ch.difficulty === tier);
+              const passedInTier = tierChallenges.filter(ch => ch.passed && selected.includes(ch.id)).length;
+              return passedInTier >= selectionRules.tiers[tier].required;
+            });
+            const allMet = metReqs.length === tierKeys.length;
+            return (
+              <div className={`selection-banner ${allMet ? 'selection-banner-complete' : ''}`}>
+                <div className="selection-banner-header">
+                  <i className={`fa-solid ${allMet ? 'fa-circle-check' : 'fa-circle-info'}`} aria-hidden />
+                  <strong>{allMet ? 'Requirements Met! 🎉' : 'Mission Requirements'}</strong>
+                  {savingSelection && <span className="selection-saving">Saving…</span>}
+                </div>
+                <p className="selection-banner-desc">{selectionRules.description}</p>
+                <div className="tier-requirement-chips">
+                  {tierKeys.map(tier => {
+                    const rule = selectionRules.tiers[tier];
+                    const tierChs = challenges.filter(ch => ch.difficulty === tier);
+                    const selectedInTier = tierChs.filter(ch => selected.includes(ch.id));
+                    const passedInTier = tierChs.filter(ch => ch.passed && selected.includes(ch.id)).length;
+                    const met = passedInTier >= rule.required;
+                    return (
+                      <div key={tier} className={`tier-req-chip ${met ? 'tier-req-chip-met' : selectedInTier.length >= rule.required ? 'tier-req-chip-selected' : ''}`}>
+                        <span className="tier-req-icon">
+                          {met ? '✅' : selectedInTier.length >= rule.required ? '🔲' : '⬜'}
+                        </span>
+                        <span><strong>{rule.label}:</strong> {selectedInTier.length} selected · {passedInTier}/{rule.required} passed</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Filter tabs (only shown when no selectionRules) ── */}
+          {!selectionRules?.enabled && (
+            <div className="challenge-tabs">
+              <button type="button" className={`tab ${challengeFilter === 'all' ? 'tab-active' : ''}`} onClick={() => setChallengeFilter('all')}>All</button>
+              <button type="button" className={`tab ${challengeFilter === 'passed' ? 'tab-active' : ''}`} onClick={() => setChallengeFilter('passed')}>Passed</button>
+              <button type="button" className={`tab ${challengeFilter === 'not-passed' ? 'tab-active' : ''}`} onClick={() => setChallengeFilter('not-passed')}>Not passed</button>
+            </div>
+          )}
+
           {loadingChallenges ? (
             <div className="loading">Loading challenges…</div>
+          ) : selectionRules?.enabled ? (
+            /* ── Tier-grouped view for courses with selectionRules ── */
+            <div className="tier-groups">
+              {Object.entries(selectionRules.tiers).map(([tier, rule]) => {
+                const tierChallenges = challenges.filter(ch =>
+                  (ch.difficulty ?? '').toLowerCase() === tier &&
+                  (!challengeSearch ||
+                    ch.name.toLowerCase().includes(challengeSearch.toLowerCase()) ||
+                    ch.id.toLowerCase().includes(challengeSearch.toLowerCase()))
+                );
+                const selected = learnerSelection?.selectedChallenges ?? [];
+                const passedInTier = tierChallenges.filter(ch => ch.passed && selected.includes(ch.id)).length;
+                const selectedInTier = tierChallenges.filter(ch => selected.includes(ch.id)).length;
+                const tierMet = passedInTier >= rule.required;
+                const tierIcons: Record<string, string> = { beginner: '🟢', intermediate: '🟡', advanced: '🔴' };
+                return (
+                  <div key={tier} className={`tier-group ${tierMet ? 'tier-group-complete' : ''}`}>
+                    <div className="tier-group-header">
+                      <div className="tier-group-title">
+                        <span className="tier-emoji">{tierIcons[tier] ?? '⚪'}</span>
+                        <h3>{rule.label}</h3>
+                        <span className={`tier-badge ${tierMet ? 'tier-badge-met' : ''}`}>
+                          {tierMet ? <><i className="fa-solid fa-check" aria-hidden /> Complete</> : `${rule.required} required · ${selectedInTier} selected`}
+                        </span>
+                      </div>
+                      <div className="tier-progress-mini">
+                        <div className="tier-progress-track">
+                          <div className="tier-progress-fill" style={{ width: `${Math.min(100, (passedInTier / rule.required) * 100)}%` }} />
+                        </div>
+                        <span className="tier-progress-label">{passedInTier}/{rule.required} passed</span>
+                      </div>
+                    </div>
+                    <div className="card-list">
+                      {tierChallenges.map(ch => {
+                        const score = ch.score != null ? Math.round(ch.score) : null;
+                        const scoreColorClass = getScoreColorClass(ch.score);
+                        const isSelected = selected.includes(ch.id);
+                        const isRequired = isSelected;
+                        return (
+                          <div key={ch.id} className={`card challenge-card ${isSelected ? 'card-selected' : ''} ${ch.passed ? 'card-passed' : ''}`}>
+                            <div className="card-selection-indicator">
+                              <button
+                                type="button"
+                                className={`selection-toggle ${isSelected ? 'selection-toggle-active' : ''}`}
+                                title={isSelected ? 'Remove from my selection' : 'Add to my selection'}
+                                onClick={() => toggleSelection(selectedCourse.id, ch.id, selected)}
+                              >
+                                {isSelected ? <i className="fa-solid fa-bookmark" aria-hidden /> : <i className="fa-regular fa-bookmark" aria-hidden />}
+                              </button>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ flex: 1 }}>
+                                <h3 style={{ margin: 0 }}>{ch.name}</h3>
+                              </div>
+                              <div className="meta">
+                                <span className={`badge ${ch.passed ? 'passed' : ch.score != null ? 'failed' : 'pending'}`}>
+                                  {ch.passed ? <><i className="fa-solid fa-check" aria-hidden /> Passed</> : ch.score != null ? <><i className="fa-solid fa-xmark" aria-hidden /> Not passed</> : <><i className="fa-regular fa-circle" aria-hidden /> Not run</>}
+                                </span>
+                                {score != null && ` · Score: ${score}%`}
+                              </div>
+                              {score != null && (
+                                <div className="challenge-score-progress" style={{ marginTop: '0.5rem' }}>
+                                  <div className={`score-progress-bar ${scoreColorClass}`}>
+                                    <div className="score-progress-fill" style={{ width: `${score}%` }} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="card-actions">
+                              <button type="button" onClick={() => openDetail(ch.id)}>Details</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {tierChallenges.length === 0 && <p className="tier-empty">No challenges match your search.</p>}
+                  </div>
+                );
+              })}
+
+              {/* Optional bonus section — challenges without a matching tier key */}
+              {(() => {
+                const tierKeys = Object.keys(selectionRules.tiers).map(t => t.toLowerCase());
+                const bonusChallenges = challenges.filter(ch => !tierKeys.includes((ch.difficulty ?? '').toLowerCase()) &&
+                  (!challengeSearch ||
+                    ch.name.toLowerCase().includes(challengeSearch.toLowerCase()) ||
+                    ch.id.toLowerCase().includes(challengeSearch.toLowerCase()))
+                );
+                if (bonusChallenges.length === 0) return null;
+                return (
+                  <div className="tier-group tier-group-bonus">
+                    <div className="tier-group-header">
+                      <div className="tier-group-title">
+                        <span className="tier-emoji">⭐</span>
+                        <h3>Bonus</h3>
+                        <span className="tier-badge">Optional</span>
+                      </div>
+                    </div>
+                    <div className="card-list">
+                      {bonusChallenges.map(ch => {
+                        const score = ch.score != null ? Math.round(ch.score) : null;
+                        const scoreColorClass = getScoreColorClass(ch.score);
+                        return (
+                          <div key={ch.id} className={`card ${ch.passed ? 'card-passed' : ''}`}>
+                            <div style={{ flex: 1 }}>
+                              <h3>{ch.name}</h3>
+                              <div className="meta">
+                                <span className={`badge ${ch.passed ? 'passed' : ch.score != null ? 'failed' : 'pending'}`}>
+                                  {ch.passed ? <><i className="fa-solid fa-check" aria-hidden /> Passed</> : ch.score != null ? <><i className="fa-solid fa-xmark" aria-hidden /> Not passed</> : <><i className="fa-regular fa-circle" aria-hidden /> Not run</>}
+                                </span>
+                                {score != null && ` · Score: ${score}%`}
+                              </div>
+                              {score != null && (
+                                <div className="challenge-score-progress" style={{ marginTop: '0.5rem' }}>
+                                  <div className={`score-progress-bar ${scoreColorClass}`}>
+                                    <div className="score-progress-fill" style={{ width: `${score}%` }} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="card-actions">
+                              <button type="button" onClick={() => openDetail(ch.id)}>Details</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
           ) : (
+            /* ── Plain list view for courses without selectionRules ── */
             <>
               <div className="card-list">
                 {challenges
@@ -887,22 +1104,44 @@ export default function App() {
                           {detail.result.testResults.error && (
                             <p className="result-layer-error">{detail.result.testResults.error}</p>
                           )}
-                          {detail.result.testResults.details?.map((suite, i) => (
-                            <div key={i}>
-                              {suite.assertionResults?.filter((a) => a.status === 'failed').map((a, j) => (
-                                <div key={j} className="result-issue">
-                                  <strong>{a.title}</strong>
-                                  {a.failureMessages?.map((msg, k) => (
-                                    <p key={k} className="result-issue-msg">{msg}</p>
+                          {(() => {
+                            const suites = detail.result.testResults.details ?? [];
+                            const failedAssertions: Array<{ title: string; msg: string }> = [];
+                            for (const suite of suites) {
+                              for (const a of (suite.assertionResults ?? [])) {
+                                if (a.status === 'failed') {
+                                  // Strip ANSI colour codes from failure messages
+                                  const raw = (a.failureMessages ?? []).join('\n');
+                                  const clean = raw.replace(/\u001b\[[0-9;]*m/g, '').split('\n').map((s: string) => s.trim()).filter(Boolean)[0] ?? '';
+                                  failedAssertions.push({ title: a.title ?? '', msg: clean });
+                                }
+                              }
+                              // Jest can surface suite-level errors in .message
+                              if (suite.status === 'failed' && suite.message && failedAssertions.length === 0) {
+                                failedAssertions.push({ title: suite.testFilePath?.replace(/^.*[\/\\]/, '') ?? 'Test suite', msg: suite.message });
+                              }
+                            }
+                            if (failedAssertions.length > 0) {
+                              return (
+                                <div className="failed-tests-list">
+                                  {failedAssertions.map((f, i) => (
+                                    <div key={i} className="result-issue">
+                                      <strong><i className="fa-solid fa-xmark" style={{ color: '#dc2626', marginRight: '0.4em' }} aria-hidden />{f.title}</strong>
+                                      {f.msg && <p className="result-issue-msg">{f.msg}</p>}
+                                    </div>
                                   ))}
                                 </div>
-                              ))}
-                              {suite.message && <p className="result-issue-msg">{suite.message}</p>}
-                            </div>
-                          ))}
-                          {score === 100 && (
-                            <p className="result-issue-msg" style={{ color: '#155724', fontWeight: 500 }}><i className="fa-solid fa-check" aria-hidden /> All tests passed</p>
-                          )}
+                              );
+                            }
+                            if (score === 100) {
+                              return <p className="result-issue-msg" style={{ color: '#155724', fontWeight: 500 }}><i className="fa-solid fa-check" aria-hidden /> All tests passed</p>;
+                            }
+                            // Score < 100 but no detail breakdown available
+                            if (!detail.result.testResults.error) {
+                              return <p className="result-issue-msg" style={{ color: '#92400e' }}>Some tests did not pass. Run the review locally for full output.</p>;
+                            }
+                            return null;
+                          })()}
                         </div>
                       </section>
                     )
@@ -1076,14 +1315,28 @@ export default function App() {
                               <> · {detail.result.e2eResults.passedTests}/{detail.result.e2eResults.totalTests} passed</>
                             )}
                           </div>
-                          {detail.result.e2eResults.error ? (
-                            <p className="result-layer-error">{detail.result.e2eResults.error.split('\n')[0]}</p>
-                          ) : detail.result.e2eResults.note ? (
-                            <p className="result-issue-msg">{detail.result.e2eResults.note}</p>
-                          ) : null}
-                          {(detail.result.e2eResults as { details?: unknown[] }).details?.length ? (
-                            <p className="result-issue-msg">See test output for failed steps.</p>
-                          ) : null}
+                          {detail.result.e2eResults.note && (
+                            <p className="result-issue-msg" style={{ fontStyle: 'italic' }}>{detail.result.e2eResults.note}</p>
+                          )}
+                          {detail.result.e2eResults.error ? (() => {
+                            // Each line is one failed spec: "SpecTitle: error message"
+                            const lines = detail.result.e2eResults.error
+                              .replace(/\u001b\[[0-9;]*m/g, '')
+                              .split('\n')
+                              .map((l: string) => l.trim())
+                              .filter(Boolean);
+                            return (
+                              <div className="failed-tests-list">
+                                {lines.map((line: string, i: number) => (
+                                  <div key={i} className="result-issue">
+                                    <strong><i className="fa-solid fa-xmark" style={{ color: '#dc2626', marginRight: '0.4em' }} aria-hidden />
+                                    {line.includes(':') ? line.split(':')[0].trim() : 'Failed test'}</strong>
+                                    {line.includes(':') && <p className="result-issue-msg">{line.split(':').slice(1).join(':').trim()}</p>}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })() : null}
                           {score === 100 && !detail.result.e2eResults.error && (
                             <p className="result-issue-msg" style={{ color: '#155724', fontWeight: 500 }}>✅ All E2E tests passed</p>
                           )}
