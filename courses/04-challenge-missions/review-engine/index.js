@@ -93,8 +93,18 @@ async function main() {
   const orderMap = new Map(config.challenges.map((c, i) => [c.id, i]));
   mergedResults.sort((a, b) => (orderMap.get(a.challengeId) ?? 999) - (orderMap.get(b.challengeId) ?? 999));
 
+  // Load learner selection so the summary correctly reflects selection-based completion
+  let learnerSelection = null;
+  try {
+    const REPO_ROOT = join(COURSE_DIR, '..', '..');
+    const selectionPath = join(REPO_ROOT, 'learner-results', `${config.courseId}-selection.json`);
+    if (existsSync(selectionPath)) {
+      learnerSelection = JSON.parse(readFileSync(selectionPath, 'utf-8'));
+    }
+  } catch (_) {}
+
   // Generate course summary from full merged results
-  const courseSummary = generateCourseSummary(mergedResults, config);
+  const courseSummary = generateCourseSummary(mergedResults, config, learnerSelection);
 
   writeFileSync(
     challengeResultsPath,

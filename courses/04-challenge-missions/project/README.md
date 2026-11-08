@@ -2,26 +2,26 @@
 
 ## 📊 Progress Evidence
 
-*Auto-updated when you run review. Last run: 23/10/2026, 5:30:00 am*
+*Auto-updated when you run review. Last run: 8/11/2026, 1:11:24 pm*
 
 | Metric | Value |
 |--------|-------|
-| Challenges completed | 0 / 14 (0%) |
-| Average score | 0% |
+| Challenges completed | 6 / 6 (100%) |
+| Average score | 87.1% |
 
 | Challenge | Skills covered | Status |
 |-----------|----------------|--------|
-| Habit Tracker | useState, FlatList, AsyncStorage | — |
-| Pokemon Explorer | fetch, FlatList, Navigation | — |
+| Habit Tracker | useState, FlatList, AsyncStorage | Passed |
+| Pokemon Explorer | fetch, FlatList, Navigation | Passed |
 | Notes App | AsyncStorage, CRUD, TextInput | — |
 | Calculator | useState, UI layout | — |
 | Meme Viewer | fetch, Image, ScrollView | — |
-| Realtime Chat | Firebase, FlatList, Auth | — |
-| Expense Tracker | Redux, Charts, Forms | — |
+| Realtime Chat | Firebase, FlatList, Auth | Passed |
+| Expense Tracker | Redux, Charts, Forms | Passed |
 | Movie App | API, Search, Navigation | — |
 | AI Recipe App | API, Forms, Loading states | — |
-| Food Delivery | Maps, Cart, Navigation | — |
-| Social Media Platform | Auth, Feed, Firebase, Upload | — |
+| Food Delivery | Maps, Cart, Navigation | Passed |
+| Social Media Platform | Auth, Feed, Firebase, Upload | Passed |
 | Full Marketplace | Redux, Payments, Search | — |
 | Fitness Tracker | Charts, AsyncStorage, Notifications | — |
 | Anime Streaming UI | UI design, FlatList, Navigation | — |

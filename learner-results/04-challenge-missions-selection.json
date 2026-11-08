@@ -1,5 +1,12 @@
 {
   "courseId": "04-challenge-missions",
-  "selectedChallenges": [],
-  "updatedAt": "2026-10-23T00:00:00.000Z"
+  "selectedChallenges": [
+    "01-habit-tracker",
+    "02-pokemon-explorer",
+    "06-realtime-chat",
+    "07-expense-tracker",
+    "10-food-delivery",
+    "11-social-media-platform"
+  ],
+  "updatedAt": "2026-11-08T07:30:00.000Z"
 }

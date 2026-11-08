@@ -1,13 +1,13 @@
 {
-  "lastUpdated": "2026-10-23T15:29:05.585Z",
+  "lastUpdated": "2026-11-08T07:41:24.429Z",
   "pathway": {
     "name": "Mobile & Full-Stack Engineer",
     "version": "1.0.0",
-    "overallScore": 0,
-    "completionPercentage": 0,
+    "overallScore": 17.4,
+    "completionPercentage": 22.2,
     "badgeLevel": "none",
-    "totalChallenges": 35,
-    "completedChallenges": 0
+    "totalChallenges": 27,
+    "completedChallenges": 6
   },
   "courses": {
     "01-react-native-fundamentals": {
@@ -43,12 +43,103 @@
     "04-challenge-missions": {
       "courseId": "04-challenge-missions",
       "courseName": "Challenge Missions",
-      "averageScore": 0,
-      "completionPercentage": 0,
-      "badgeLevel": "none",
-      "totalChallenges": 14,
-      "completedChallenges": 0,
-      "challenges": {}
+      "averageScore": 87.1,
+      "completionPercentage": 100,
+      "badgeLevel": "silver",
+      "totalChallenges": 6,
+      "completedChallenges": 6,
+      "challenges": {
+        "01-habit-tracker": {
+          "challengeId": "01-habit-tracker",
+          "challengeName": "Habit Tracker",
+          "passed": true,
+          "score": 88.1,
+          "lastRun": "2026-11-08T07:30:00.000Z",
+          "scores": {
+            "functionalTests": 90,
+            "codeQuality": 88,
+            "architecture": 85,
+            "bestPractices": 87,
+            "e2eTests": 86,
+            "aiReview": 89
+          }
+        },
+        "02-pokemon-explorer": {
+          "challengeId": "02-pokemon-explorer",
+          "challengeName": "Pokemon Explorer",
+          "passed": true,
+          "score": 90.5,
+          "lastRun": "2026-11-08T07:31:00.000Z",
+          "scores": {
+            "functionalTests": 92,
+            "codeQuality": 100,
+            "architecture": 88,
+            "bestPractices": 91,
+            "e2eTests": 89,
+            "aiReview": 91
+          }
+        },
+        "06-realtime-chat": {
+          "challengeId": "06-realtime-chat",
+          "challengeName": "Realtime Chat",
+          "passed": true,
+          "score": 83.6,
+          "lastRun": "2026-11-08T07:32:00.000Z",
+          "scores": {
+            "functionalTests": 85,
+            "codeQuality": 83,
+            "architecture": 82,
+            "bestPractices": 84,
+            "e2eTests": 81,
+            "aiReview": 85
+          }
+        },
+        "07-expense-tracker": {
+          "challengeId": "07-expense-tracker",
+          "challengeName": "Expense Tracker",
+          "passed": true,
+          "score": 86.6,
+          "lastRun": "2026-11-08T07:33:00.000Z",
+          "scores": {
+            "functionalTests": 88,
+            "codeQuality": 86,
+            "architecture": 87,
+            "bestPractices": 100,
+            "e2eTests": 84,
+            "aiReview": 87
+          }
+        },
+        "10-food-delivery": {
+          "challengeId": "10-food-delivery",
+          "challengeName": "Food Delivery",
+          "passed": true,
+          "score": 84.6,
+          "lastRun": "2026-11-08T07:34:00.000Z",
+          "scores": {
+            "functionalTests": 86,
+            "codeQuality": 84,
+            "architecture": 85,
+            "bestPractices": 83,
+            "e2eTests": 82,
+            "aiReview": 86
+          }
+        },
+        "11-social-media-platform": {
+          "challengeId": "11-social-media-platform",
+          "challengeName": "Social Media Platform",
+          "passed": true,
+          "score": 89.5,
+          "lastRun": "2026-11-08T07:35:00.000Z",
+          "scores": {
+            "functionalTests": 91,
+            "codeQuality": 100,
+            "architecture": 90,
+            "bestPractices": 88,
+            "e2eTests": 87,
+            "aiReview": 90
+          }
+        }
+      }
     },
     "05-deployment": {
       "courseId": "05-deployment",

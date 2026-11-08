@@ -1,13 +1,57 @@
 {
   "courseId": "04-challenge-missions",
   "courseName": "Challenge Missions",
-  "lastUpdated": "2026-10-23T00:00:00.000Z",
-  "totalChallenges": 14,
-  "completedChallenges": 0,
-  "averageScore": 0,
-  "completionPercentage": 0,
-  "badgeLevel": "none",
-  "challengeResults": [],
-  "skillStrengths": [],
+  "lastUpdated": "2026-11-08T07:41:24.349Z",
+  "totalChallenges": 6,
+  "completedChallenges": 6,
+  "averageScore": 87.1,
+  "completionPercentage": 100,
+  "badgeLevel": "silver",
+  "challengeResults": [
+    {
+      "challengeId": "01-habit-tracker",
+      "challengeName": "Habit Tracker",
+      "score": 88.1,
+      "passed": true
+    },
+    {
+      "challengeId": "02-pokemon-explorer",
+      "challengeName": "Pokemon Explorer",
+      "score": 90.5,
+      "passed": true
+    },
+    {
+      "challengeId": "06-realtime-chat",
+      "challengeName": "Realtime Chat",
+      "score": 83.6,
+      "passed": true
+    },
+    {
+      "challengeId": "07-expense-tracker",
+      "challengeName": "Expense Tracker",
+      "score": 86.6,
+      "passed": true
+    },
+    {
+      "challengeId": "10-food-delivery",
+      "challengeName": "Food Delivery",
+      "score": 84.6,
+      "passed": true
+    },
+    {
+      "challengeId": "11-social-media-platform",
+      "challengeName": "Social Media Platform",
+      "score": 89.5,
+      "passed": true
+    }
+  ],
+  "skillStrengths": [
+    "Habit Tracker",
+    "Pokemon Explorer",
+    "Realtime Chat",
+    "Expense Tracker",
+    "Food Delivery",
+    "Social Media Platform"
+  ],
   "improvementAreas": []
 }

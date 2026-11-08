@@ -769,16 +769,6 @@ export default function App() {
                         const isRequired = isSelected;
                         return (
                           <div key={ch.id} className={`card challenge-card ${isSelected ? 'card-selected' : ''} ${ch.passed ? 'card-passed' : ''}`}>
-                            <div className="card-selection-indicator">
-                              <button
-                                type="button"
-                                className={`selection-toggle ${isSelected ? 'selection-toggle-active' : ''}`}
-                                title={isSelected ? 'Remove from my selection' : 'Add to my selection'}
-                                onClick={() => toggleSelection(selectedCourse.id, ch.id, selected)}
-                              >
-                                {isSelected ? <i className="fa-solid fa-bookmark" aria-hidden /> : <i className="fa-regular fa-bookmark" aria-hidden />}
-                              </button>
-                            </div>
                             <div style={{ flex: 1 }}>
                               <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: 0 }}>{ch.name}</h3>
